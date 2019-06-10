@@ -1,0 +1,18 @@
+{
+  "name": "svgaplayer-svg",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "pako": "^1.0.10",
+    "protobufjs": "^6.8.8"
+  },
+  "devDependencies": {
+    "typescript": "^3.5.1"
+  }
+}
