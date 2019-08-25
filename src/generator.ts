@@ -1,11 +1,13 @@
 import { VideoEntity } from "./proto/video_entity";
 import { JSDOM } from "jsdom";
 import * as jimp from "jimp";
+import { FrameEntity } from "./proto/frame_entity";
 
 export class Generator {
 
     dom = new JSDOM()
     svgElement: DocumentFragment | undefined
+    spriteHasClipPath: boolean[] = []
 
     constructor(readonly videoItem: VideoEntity, readonly loops: number = 0) {
         this.svgElement = JSDOM.fragment(`<svg version="1.1" xmlns="http://www.w3.org/2000/svg" style="background-color: black" viewBox="0 0 ${videoItem.videoSize.width} ${videoItem.videoSize.height}"></svg>`)
@@ -14,6 +16,7 @@ export class Generator {
 
     async process() {
         await this.appendImages()
+        this.appendClipPaths()
         this.appendLayers()
         this.appendCSS()
     }
@@ -29,12 +32,37 @@ export class Generator {
         svgElement.appendChild(JSDOM.fragment(`<defs>${defsContents}</defs>`))
     }
 
+    appendClipPaths() {
+        let defsContents = ''
+        this.videoItem.sprites.forEach((spriteItem, spriteIndex) => {
+            let hasClipPath = false
+            spriteItem.frames.forEach((frameItem, frameIndex) => {
+                if (frameItem.maskPath !== undefined) {
+                    hasClipPath = true
+                    const d = frameItem.maskPath._d.replace(/([0-9]+)\.([0-9][0-9][0-9])[0-9]+/g, '$1\.$2')
+                    defsContents += `<clipPath id="maskPath_${spriteIndex}_${frameIndex}"><path d="${d}" style="fill:#000000;"></path></clipPath>`
+                }
+            })
+            this.spriteHasClipPath.push(hasClipPath)
+        })
+        const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
+        svgElement.appendChild(JSDOM.fragment(`<defs>${defsContents}</defs>`))
+    }
+
     appendLayers() {
         this.videoItem.sprites.forEach((it, idx) => {
             const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
             if (it.imageKey != undefined && this.videoItem.images[it.imageKey] != undefined && this.svgElement !== undefined) {
-                const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" style="opacity:0.0; will-change: transform, opacity;" />`)
-                svgElement.appendChild(imgElement)
+                if (this.spriteHasClipPath[idx] === true) {
+                    it.frames.forEach((_, frameIndex) => {
+                        const imgElement = JSDOM.fragment(`<use id="sprite_${idx}_${frameIndex}" href="#image_${it.imageKey}" style="opacity:0.0; will-change: transform, opacity; clip-path: url(#maskPath_${idx}_${frameIndex});" />`)
+                        svgElement.appendChild(imgElement)
+                    })
+                }
+                else {
+                    const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" style="opacity:0.0; will-change: transform, opacity;" />`)
+                    svgElement.appendChild(imgElement)
+                }
             }
         })
     }
@@ -42,14 +70,45 @@ export class Generator {
     appendCSS() {
         let cssContent = '';
         this.videoItem.sprites.forEach((spriteItem, spriteIndex) => {
-            let animationContent = `#sprite_${spriteIndex} { animation: sprite_${spriteIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
-            let keyframesContent = ``;
-            spriteItem.frames.forEach((frameItem, frameIndex) => {
-                const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${frameItem.alpha}; transform: translate(${unmatrix.translateX}px, ${unmatrix.translateY}px) rotate(${unmatrix.rotate}deg) skew(${unmatrix.skew}deg) scale(${unmatrix.scaleX}, ${unmatrix.scaleY}); }`
-            })
-            animationContent += `@keyframes sprite_${spriteIndex}_animation { ${keyframesContent} }`
-            cssContent += animationContent;
+            if (this.spriteHasClipPath[spriteIndex] === true) {
+                spriteItem.frames.forEach((frameItem, frameIndex) => {
+                    let animationContent = `#sprite_${spriteIndex}_${frameIndex} { animation: sprite_${spriteIndex}_${frameIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
+                    let keyframesContent = ``;
+                    for (let currentIndex = 0; currentIndex < this.videoItem.frames; currentIndex++) {
+                        if (currentIndex < frameIndex) {
+                            if (currentIndex == 0) {
+                                keyframesContent += `0% { opacity: 0; }`
+                            }
+                            else if (currentIndex == frameIndex -1) {
+                                keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
+                            }
+                            continue
+                        }
+                        if (frameItem.alpha <= 0.0 || currentIndex > frameIndex) {
+                            keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
+                            break
+                        }
+                        const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                        keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
+                    }
+                    animationContent += `@keyframes sprite_${spriteIndex}_${frameIndex}_animation { ${keyframesContent} }`
+                    cssContent += animationContent;
+                })
+            }
+            else {
+                let animationContent = `#sprite_${spriteIndex} { animation: sprite_${spriteIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
+                let keyframesContent = ``;
+                spriteItem.frames.forEach((frameItem, frameIndex) => {
+                    if (frameItem.alpha <= 0.0) {
+                        keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
+                        return;
+                    }
+                    const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                    keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
+                })
+                animationContent += `@keyframes sprite_${spriteIndex}_animation { ${keyframesContent} }`
+                cssContent += animationContent;
+            }
         })
         const cssElement = JSDOM.fragment(`<style>${cssContent}</style>`)
         const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
@@ -57,7 +116,7 @@ export class Generator {
     }
 
     toString() {
-        return this.dom.serialize().replace(`<html><head></head><body>`, '').replace(`</body></html>`, '').replace(/svg_/ig, '')
+        return this.dom.serialize().replace(`<html><head></head><body>`, '').replace(`</body></html>`, '').replace(/clippath/g, 'clipPath').replace(/svg_/ig, '')
     }
 
 }
