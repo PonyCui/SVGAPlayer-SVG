@@ -52,103 +52,142 @@ export class Generator {
     appendLayers() {
         this.videoItem.sprites.forEach((it, idx) => {
             const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
-            if (it.imageKey != undefined && this.videoItem.images[it.imageKey] != undefined && this.svgElement !== undefined) {
-                let animateLayers: { [key: string]: string[] } = {
-                    "opacity": [],
-                    "translate": [],
-                    "rotate": [],
-                    "skew": [],
-                    "scale": [],
-                }
+            let animateLayers: { [key: string]: string[] } = {
+                "opacity": [],
+                "translate": [],
+                "rotate": [],
+                "skew": [],
+                "scale": [],
+            }
+            if (this.spriteHasClipPath[idx] === true) {
+                animateLayers["clip-path"] = []
+            }
+            it.frames.forEach((frameItem, frameIndex) => {
+                const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                animateLayers["opacity"].push(Number(frameItem.alpha.toFixed(3)).toString())
+                animateLayers["translate"].push(`${Number(unmatrix.translateX.toFixed(6)).toString()},${Number(unmatrix.translateY.toFixed(6)).toString()}`)
+                animateLayers["rotate"].push(`${Number(unmatrix.rotate.toFixed(6)).toString()}`)
+                animateLayers["skew"].push(`${Number(unmatrix.skew.toFixed(6)).toString()}`)
+                animateLayers["scale"].push(`${Number(unmatrix.scaleX.toFixed(6)).toString()},${Number(unmatrix.scaleY.toFixed(6)).toString()}`)
                 if (this.spriteHasClipPath[idx] === true) {
-                    animateLayers["clip-path"] = []
+                    animateLayers["clip-path"].push(`url(#maskPath_${idx}_${frameIndex})`)
                 }
-                it.frames.forEach((frameItem, frameIndex) => {
-                    const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                    animateLayers["opacity"].push(Number(frameItem.alpha.toFixed(3)).toString())
-                    animateLayers["translate"].push(`${Number(unmatrix.translateX.toFixed(6)).toString()},${Number(unmatrix.translateY.toFixed(6)).toString()}`)
-                    animateLayers["rotate"].push(`${Number(unmatrix.rotate.toFixed(6)).toString()}`)
-                    animateLayers["skew"].push(`${Number(unmatrix.skew.toFixed(6)).toString()}`)
-                    animateLayers["scale"].push(`${Number(unmatrix.scaleX.toFixed(6)).toString()},${Number(unmatrix.scaleY.toFixed(6)).toString()}`)
-                    if (this.spriteHasClipPath[idx] === true) {
-                        animateLayers["clip-path"].push(`url(#maskPath_${idx}_${frameIndex})`)
-                    }
-                })
-                let animateContents = ""
-                for (const attrName in animateLayers) {
-                    if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
-                        animateLayers[attrName] = [animateLayers[attrName][0]]
-                    }
-                    if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
-                        animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
-                    }
-                    else {
-                        animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
-                    }
+            })
+            let animateContents = ""
+            for (const attrName in animateLayers) {
+                if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
+                    animateLayers[attrName] = [animateLayers[attrName][0]]
                 }
+                if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
+                    animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                }
+                else {
+                    animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
+                }
+            }
+            if (it.imageKey != undefined && this.videoItem.images[it.imageKey] != undefined && this.svgElement !== undefined) {
                 const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" opacity="0" >${animateContents}</use>`)
                 svgElement.appendChild(imgElement)
             }
-            // else if (it.imageKey !== undefined && it.imageKey.endsWith(".vector")) {
-            //     let standard = JSON.stringify(it.frames[0].shapes)
-            //     let allSame = it.frames.every((frameItem) => JSON.stringify(frameItem.shapes) === standard)
-            //     if (!allSame) {
-            //         let standard: string | undefined = undefined
-            //         allSame = it.frames.every((it) => {
-            //             if (it.shapes.length == 0) return true;
-            //             let tmp2: any[] = JSON.parse(JSON.stringify(it.shapes))
-            //             tmp2.forEach(it => delete it.styles)
-            //             if (standard === undefined) {
-            //                 standard = JSON.stringify(tmp2)
-            //             }
-            //             return JSON.stringify(tmp2) === standard
-            //         })
-            //     }
-            //     this.spritePathSame[idx] = allSame;
-            //     let found = false;
-            //     it.frames.forEach((frameItem, frameIndex) => {
-            //         if (allSame && found) return;
-            //         let contentElement = ``
-            //         if (frameItem.shapes !== undefined && frameItem.shapes.length > 0) {
-            //             found = true
-            //             frameItem.shapes.forEach((shapeItem, shapeIndex) => {
-            //                 let styleAttrs = ``
-            //                 if (!allSame) {
-            //                     if (shapeItem.styles.stroke) {
-            //                         styleAttrs += `stroke="rgba(${(shapeItem.styles.stroke[0] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[1] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[2] * 255).toFixed(0)}, ${shapeItem.styles.stroke[3]})" `
-            //                     }
-            //                     if (shapeItem.strokeWidth !== undefined) {
-            //                         styleAttrs += `stroke-width="${shapeItem.strokeWidth}" `
-            //                     }
-            //                     if (shapeItem.lineCap !== undefined) {
-            //                         styleAttrs += `line-cap="${shapeItem.lineCap}" `
-            //                     }
-            //                     if (shapeItem.lineJoin !== undefined) {
-            //                         styleAttrs += `line-join="${shapeItem.lineJoin}" `
-            //                     }
-            //                     if (shapeItem.miterLimit !== undefined) {
-            //                         styleAttrs += `miter-limit="${shapeItem.miterLimit}" `
-            //                     }
-            //                     if (shapeItem.styles.fill) {
-            //                         styleAttrs += `fill="rgba(${(shapeItem.styles.fill[0] * 255).toFixed(0)}, ${(shapeItem.styles.fill[1] * 255).toFixed(0)}, ${(shapeItem.styles.fill[2] * 255).toFixed(0)}, ${shapeItem.styles.fill[3]})" `
-            //                     }
-            //                 }
-            //                 if (shapeItem.type == "shape") {
-            //                     contentElement += `<path id="sprite_${idx}_${allSame ? 0 : frameIndex}_${shapeIndex}" d="${shapeItem.pathArgs.d}" ${styleAttrs}></path>`
-            //                 }
-            //                 else if (shapeItem.type == "ellipse") {
-            //                     contentElement += `<ellipse id="sprite_${idx}_${allSame ? 0 : frameIndex}_${shapeIndex}" cx="${shapeItem.pathArgs.x}" cy="${shapeItem.pathArgs.y}" rx="${shapeItem.pathArgs.radiusX}" ry="${shapeItem.pathArgs.radiusY}" ${styleAttrs}></ellipse>`
-            //                 }
-            //                 else if (shapeItem.type == "rect") {
-            //                     contentElement += `<rect id="sprite_${idx}_${allSame ? 0 : frameIndex}_${shapeIndex}" x="${shapeItem.pathArgs.x}" y="${shapeItem.pathArgs.y}" width="${shapeItem.pathArgs.width}" height="${shapeItem.pathArgs.height}" rx="${shapeItem.pathArgs.cornerRadius}" ry="${shapeItem.pathArgs.cornerRadius}" ${styleAttrs}></rect>`
-            //                 }
-            //             })
-            //         }
-            //         if (allSame && !found) return;
-            //         const gElement = JSDOM.fragment(`<g id="sprite_${idx}_${allSame ? 0 : frameIndex}" style="opacity:0.0; will-change: transform, opacity;">${contentElement}</g>`)
-            //         svgElement.appendChild(gElement)
-            //     })
-            // }
+            else if (it.imageKey !== undefined && it.imageKey.endsWith(".vector")) {
+                let contentElement = ``
+                let shapes: any = {}
+                let shapeIndexMapItem: any = {}
+                it.frames.forEach((frameItem, frameIndex) => {
+                    frameItem.shapes.forEach((shapeItem, shapeIndex) => {
+                        if (shapes[shapeIndex] === undefined) { shapes[shapeIndex] = []; shapeIndexMapItem[shapeIndex] = shapeItem }
+                        shapes[shapeIndex][frameIndex] = shapeItem;
+                    })
+                })
+                for (const shapeIndex in shapes) {
+                    let shapeItem = shapeIndexMapItem[shapeIndex];
+                    const shapeFrames = shapes[shapeIndex];
+                    let animateLayers: { [key: string]: string[] } = {
+                        "stroke": [],
+                        "stroke-width": [],
+                        "line-cap": [],
+                        "line-join": [],
+                        "miter-limit": [],
+                        "fill": [],
+                        "d": [],
+                        "cx": [],
+                        "cy": [],
+                        "rx": [],
+                        "ry": [],
+                        "x": [],
+                        "y": [],
+                        "width": [],
+                        "height": [],
+                    }
+                    shapeFrames.forEach((shapeFrame: any) => {
+                        if (shapeFrame.styles.stroke) {
+                            animateLayers["stroke"].push(`rgba(${(shapeFrame.styles.stroke[0] * 255).toFixed(0)}, ${(shapeFrame.styles.stroke[1] * 255).toFixed(0)}, ${(shapeFrame.styles.stroke[2] * 255).toFixed(0)}, ${shapeFrame.styles.stroke[3]})`)
+                        }
+                        if (shapeFrame.styles.strokeWidth !== undefined && shapeFrame.styles.strokeWidth !== null) {
+                            animateLayers["stroke-width"].push(shapeFrame.styles.strokeWidth.toString())
+                        }
+                        if (shapeFrame.styles.lineCap !== undefined && shapeFrame.styles.lineCap !== null) {
+                            animateLayers["line-cap"].push(shapeFrame.styles.lineCap)
+                        }
+                        if (shapeFrame.styles.lineJoin !== undefined && shapeFrame.styles.lineJoin !== null) {
+                            animateLayers["line-join"].push(shapeFrame.styles.lineJoin)
+                        }
+                        if (shapeFrame.styles.miterLimit !== undefined && shapeFrame.styles.miterLimit !== null) {
+                            animateLayers["miter-limit"].push(shapeFrame.styles.miterLimit)
+                        }
+                        if (shapeFrame.styles.fill !== undefined && shapeFrame.styles.fill !== null) {
+                            animateLayers["fill"].push(`rgba(${(shapeFrame.styles.fill[0] * 255).toFixed(0)}, ${(shapeFrame.styles.fill[1] * 255).toFixed(0)}, ${(shapeFrame.styles.fill[2] * 255).toFixed(0)}, ${shapeFrame.styles.fill[3]})`)
+                        }
+                        if (shapeFrame.shape !== undefined && shapeFrame.shape !== null) {
+                            if (shapeFrame.shape.d !== undefined && shapeFrame.shape.d !== null) {
+                                animateLayers["d"].push(shapeFrame.shape.d)
+                            }
+                            if (shapeFrame.shape.cx !== undefined && shapeFrame.shape.cx !== null) {
+                                animateLayers["cx"].push(shapeFrame.shape.cx)
+                            }
+                            if (shapeFrame.shape.cy !== undefined && shapeFrame.shape.cy !== null) {
+                                animateLayers["cy"].push(shapeFrame.shape.cy)
+                            }
+                            if (shapeFrame.shape.rx !== undefined && shapeFrame.shape.rx !== null) {
+                                animateLayers["rx"].push(shapeFrame.shape.rx)
+                            }
+                            if (shapeFrame.shape.ry !== undefined && shapeFrame.shape.ry !== null) {
+                                animateLayers["ry"].push(shapeFrame.shape.ry)
+                            }
+                            if (shapeFrame.shape.x !== undefined && shapeFrame.shape.x !== null) {
+                                animateLayers["x"].push(shapeFrame.shape.x)
+                            }
+                            if (shapeFrame.shape.y !== undefined && shapeFrame.shape.y !== null) {
+                                animateLayers["y"].push(shapeFrame.shape.y)
+                            }
+                            if (shapeFrame.shape.width !== undefined && shapeFrame.shape.width !== null) {
+                                animateLayers["width"].push(shapeFrame.shape.width)
+                            }
+                            if (shapeFrame.shape.height !== undefined && shapeFrame.shape.height !== null) {
+                                animateLayers["height"].push(shapeFrame.shape.height)
+                            }
+                        }
+                    })
+                    let animateContents2 = ""
+                    for (const attrName in animateLayers) {
+                        if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
+                            animateLayers[attrName] = [animateLayers[attrName][0]]
+                        }
+                        animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
+                    }
+                    if (shapeItem.type == "shape") {
+                        contentElement += `<path id="sprite_${idx}_${shapeIndex}" d="${shapeItem.pathArgs.d}">${animateContents2}</path>`
+                    }
+                    else if (shapeItem.type == "ellipse") {
+                        contentElement += `<ellipse id="sprite_${idx}_${shapeIndex}" cx="${shapeItem.pathArgs.x}" cy="${shapeItem.pathArgs.y}" rx="${shapeItem.pathArgs.radiusX}" ry="${shapeItem.pathArgs.radiusY}">${animateContents2}</ellipse>`
+                    }
+                    else if (shapeItem.type == "rect") {
+                        contentElement += `<rect id="sprite_${idx}_${shapeIndex}" x="${shapeItem.pathArgs.x}" y="${shapeItem.pathArgs.y}" width="${shapeItem.pathArgs.width}" height="${shapeItem.pathArgs.height}" rx="${shapeItem.pathArgs.cornerRadius}" ry="${shapeItem.pathArgs.cornerRadius}">${animateContents2}</rect>`
+                    }
+                }
+                const gElement = JSDOM.fragment(`<g id="sprite_${idx}">${contentElement}${animateContents}</g>`)
+                svgElement.appendChild(gElement)
+            }
         })
     }
 
