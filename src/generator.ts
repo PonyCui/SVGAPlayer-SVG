@@ -8,6 +8,7 @@ export class Generator {
     dom = new JSDOM()
     svgElement: DocumentFragment | undefined
     spriteHasClipPath: boolean[] = []
+    spritePathSame: boolean[] = []
 
     constructor(readonly videoItem: VideoEntity, readonly loops: number = 0) {
         this.svgElement = JSDOM.fragment(`<svg version="1.1" xmlns="http://www.w3.org/2000/svg" style="background-color: black" viewBox="0 0 ${videoItem.videoSize.width} ${videoItem.videoSize.height}"></svg>`)
@@ -16,9 +17,10 @@ export class Generator {
 
     async process() {
         await this.appendImages()
-        this.appendClipPaths()
+        // this.appendClipPaths()
         this.appendLayers()
-        this.appendCSS()
+        // this.appendCSS()
+        this.appendSMIL()
     }
 
     async appendImages() {
@@ -60,10 +62,97 @@ export class Generator {
                     })
                 }
                 else {
-                    const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" style="opacity:0.0; will-change: transform, opacity;" />`)
+                    const animateLayers: { [key: string]: string[] } = {
+                        "opacity": [],
+                        "translate": [],
+                        "rotate": [],
+                        "skew": [],
+                        "scale": [],
+                    }
+                    it.frames.forEach((frameItem, frameIndex) => {
+                        const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                        animateLayers["opacity"].push(Number(frameItem.alpha.toFixed(3)).toString())
+                        animateLayers["translate"].push(`${Number(unmatrix.translateX.toFixed(6)).toString()},${Number(unmatrix.translateY.toFixed(6)).toString()}`)
+                        animateLayers["rotate"].push(`${Number(unmatrix.rotate.toFixed(6)).toString()}`)
+                        animateLayers["skew"].push(`${Number(unmatrix.skew.toFixed(6)).toString()}`)
+                        animateLayers["scale"].push(`${Number(unmatrix.scaleX.toFixed(6)).toString()},${Number(unmatrix.scaleY.toFixed(6)).toString()}`)
+                    })
+                    let animateContents = ""
+                    for (const attrName in animateLayers) {
+                        if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
+                            continue
+                        }
+                        if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
+                            animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                        }
+                        else {
+                            animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
+                        }
+                    }
+                    const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" style="opacity:${Number(it.frames[0].alpha.toFixed(3)).toString()};">${animateContents}</use>`)
                     svgElement.appendChild(imgElement)
                 }
             }
+            // else if (it.imageKey !== undefined && it.imageKey.endsWith(".vector")) {
+            //     let standard = JSON.stringify(it.frames[0].shapes)
+            //     let allSame = it.frames.every((frameItem) => JSON.stringify(frameItem.shapes) === standard)
+            //     if (!allSame) {
+            //         let standard: string | undefined = undefined
+            //         allSame = it.frames.every((it) => {
+            //             if (it.shapes.length == 0) return true;
+            //             let tmp2: any[] = JSON.parse(JSON.stringify(it.shapes))
+            //             tmp2.forEach(it => delete it.styles)
+            //             if (standard === undefined) {
+            //                 standard = JSON.stringify(tmp2)
+            //             }
+            //             return JSON.stringify(tmp2) === standard
+            //         })
+            //     }
+            //     this.spritePathSame[idx] = allSame;
+            //     let found = false;
+            //     it.frames.forEach((frameItem, frameIndex) => {
+            //         if (allSame && found) return;
+            //         let contentElement = ``
+            //         if (frameItem.shapes !== undefined && frameItem.shapes.length > 0) {
+            //             found = true
+            //             frameItem.shapes.forEach((shapeItem, shapeIndex) => {
+            //                 let styleAttrs = ``
+            //                 if (!allSame) {
+            //                     if (shapeItem.styles.stroke) {
+            //                         styleAttrs += `stroke="rgba(${(shapeItem.styles.stroke[0] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[1] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[2] * 255).toFixed(0)}, ${shapeItem.styles.stroke[3]})" `
+            //                     }
+            //                     if (shapeItem.strokeWidth !== undefined) {
+            //                         styleAttrs += `stroke-width="${shapeItem.strokeWidth}" `
+            //                     }
+            //                     if (shapeItem.lineCap !== undefined) {
+            //                         styleAttrs += `line-cap="${shapeItem.lineCap}" `
+            //                     }
+            //                     if (shapeItem.lineJoin !== undefined) {
+            //                         styleAttrs += `line-join="${shapeItem.lineJoin}" `
+            //                     }
+            //                     if (shapeItem.miterLimit !== undefined) {
+            //                         styleAttrs += `miter-limit="${shapeItem.miterLimit}" `
+            //                     }
+            //                     if (shapeItem.styles.fill) {
+            //                         styleAttrs += `fill="rgba(${(shapeItem.styles.fill[0] * 255).toFixed(0)}, ${(shapeItem.styles.fill[1] * 255).toFixed(0)}, ${(shapeItem.styles.fill[2] * 255).toFixed(0)}, ${shapeItem.styles.fill[3]})" `
+            //                     }
+            //                 }
+            //                 if (shapeItem.type == "shape") {
+            //                     contentElement += `<path id="sprite_${idx}_${allSame ? 0 : frameIndex}_${shapeIndex}" d="${shapeItem.pathArgs.d}" ${styleAttrs}></path>`
+            //                 }
+            //                 else if (shapeItem.type == "ellipse") {
+            //                     contentElement += `<ellipse id="sprite_${idx}_${allSame ? 0 : frameIndex}_${shapeIndex}" cx="${shapeItem.pathArgs.x}" cy="${shapeItem.pathArgs.y}" rx="${shapeItem.pathArgs.radiusX}" ry="${shapeItem.pathArgs.radiusY}" ${styleAttrs}></ellipse>`
+            //                 }
+            //                 else if (shapeItem.type == "rect") {
+            //                     contentElement += `<rect id="sprite_${idx}_${allSame ? 0 : frameIndex}_${shapeIndex}" x="${shapeItem.pathArgs.x}" y="${shapeItem.pathArgs.y}" width="${shapeItem.pathArgs.width}" height="${shapeItem.pathArgs.height}" rx="${shapeItem.pathArgs.cornerRadius}" ry="${shapeItem.pathArgs.cornerRadius}" ${styleAttrs}></rect>`
+            //                 }
+            //             })
+            //         }
+            //         if (allSame && !found) return;
+            //         const gElement = JSDOM.fragment(`<g id="sprite_${idx}_${allSame ? 0 : frameIndex}" style="opacity:0.0; will-change: transform, opacity;">${contentElement}</g>`)
+            //         svgElement.appendChild(gElement)
+            //     })
+            // }
         })
     }
 
@@ -79,7 +168,7 @@ export class Generator {
                             if (currentIndex == 0) {
                                 keyframesContent += `0% { opacity: 0; }`
                             }
-                            else if (currentIndex == frameIndex -1) {
+                            else if (currentIndex == frameIndex - 1) {
                                 keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
                             }
                             continue
@@ -94,6 +183,88 @@ export class Generator {
                     animationContent += `@keyframes sprite_${spriteIndex}_${frameIndex}_animation { ${keyframesContent} }`
                     cssContent += animationContent;
                 })
+            }
+            else if (spriteItem.imageKey !== undefined && spriteItem.imageKey.endsWith(".vector")) {
+                if (this.spritePathSame[spriteIndex] === true) {
+                    let animationContent = `#sprite_${spriteIndex}_0 { animation: sprite_${spriteIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
+                    let shapeContents: string[] = [];
+                    let keyframesContent = ``;
+                    let shapeKeyframeContents: string[] = [];
+                    spriteItem.frames.forEach((frameItem, frameIndex) => {
+                        if (frameItem.alpha <= 0.0) {
+                            keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
+                            return;
+                        }
+                        const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                        keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
+                        frameItem.shapes.forEach((shapeItem, shapeIndex) => {
+                            if (shapeContents[shapeIndex] === undefined) {
+                                shapeContents[shapeIndex] = `#sprite_${spriteIndex}_0_${shapeIndex} { animation: sprite_${spriteIndex}_0_${shapeIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`
+                                shapeKeyframeContents[shapeIndex] = ``
+                            }
+                            if (shapeItem.styles !== undefined) {
+                                let styleAttrs = ``;
+                                if (shapeItem.styles.stroke) {
+                                    styleAttrs += `stroke: rgba(${(shapeItem.styles.stroke[0] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[1] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[2] * 255).toFixed(0)}, ${shapeItem.styles.stroke[3]});`
+                                }
+                                if (shapeItem.strokeWidth !== undefined) {
+                                    styleAttrs += `stroke-width:${shapeItem.strokeWidth};`
+                                }
+                                if (shapeItem.lineCap !== undefined) {
+                                    styleAttrs += `line-cap:${shapeItem.lineCap};`
+                                }
+                                if (shapeItem.lineJoin !== undefined) {
+                                    styleAttrs += `line-join:${shapeItem.lineJoin};`
+                                }
+                                if (shapeItem.miterLimit !== undefined) {
+                                    styleAttrs += `miter-limit:${shapeItem.miterLimit};`
+                                }
+                                if (shapeItem.styles.fill) {
+                                    styleAttrs += `fill: rgba(${(shapeItem.styles.fill[0] * 255).toFixed(0)}, ${(shapeItem.styles.fill[1] * 255).toFixed(0)}, ${(shapeItem.styles.fill[2] * 255).toFixed(0)}, ${shapeItem.styles.fill[3]});`
+                                }
+                                for (let currentIndex = 0; currentIndex < this.videoItem.frames; currentIndex++) {
+                                    if (shapeItem.transform !== undefined && shapeItem.transform !== null) {
+                                        const unmatrix = parseMatrix([shapeItem.transform.a, shapeItem.transform.b, shapeItem.transform.c, shapeItem.transform.d, shapeItem.transform.tx, shapeItem.transform.ty]);
+                                        shapeKeyframeContents[shapeIndex] += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); ${styleAttrs} }`
+                                    }
+                                    else {
+                                        shapeKeyframeContents[shapeIndex] += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { ${styleAttrs} }`
+                                    }
+                                }
+                            }
+                        })
+                    })
+                    animationContent += `@keyframes sprite_${spriteIndex}_animation { ${keyframesContent} }`
+                    cssContent += animationContent;
+                    shapeContents.forEach((it, idx) => {
+                        cssContent += `${it} @keyframes sprite_${spriteIndex}_0_${idx}_animation { ${shapeKeyframeContents[idx]} }`;
+                    })
+                }
+                else {
+                    spriteItem.frames.forEach((frameItem, frameIndex) => {
+                        let animationContent = `#sprite_${spriteIndex}_${frameIndex} { animation: sprite_${spriteIndex}_${frameIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
+                        let keyframesContent = ``;
+                        for (let currentIndex = 0; currentIndex < this.videoItem.frames; currentIndex++) {
+                            if (currentIndex < frameIndex) {
+                                if (currentIndex == 0) {
+                                    keyframesContent += `0% { opacity: 0; }`
+                                }
+                                else if (currentIndex == frameIndex - 1) {
+                                    keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
+                                }
+                                continue
+                            }
+                            if (frameItem.alpha <= 0.0 || currentIndex > frameIndex) {
+                                keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
+                                break
+                            }
+                            const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                            keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
+                        }
+                        animationContent += `@keyframes sprite_${spriteIndex}_${frameIndex}_animation { ${keyframesContent} }`
+                        cssContent += animationContent;
+                    })
+                }
             }
             else {
                 let animationContent = `#sprite_${spriteIndex} { animation: sprite_${spriteIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
@@ -115,8 +286,24 @@ export class Generator {
         svgElement.appendChild(cssElement)
     }
 
+    appendSMIL() {
+        // let smilContent = '';
+
+        // const cssElement = JSDOM.fragment(`<style>${smilContent}</style>`)
+        // const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
+        // svgElement.appendChild(cssElement)
+    }
+
     toString() {
-        return this.dom.serialize().replace(`<html><head></head><body>`, '').replace(`</body></html>`, '').replace(/clippath/g, 'clipPath').replace(/svg_/ig, '')
+        return this.dom.serialize()
+            .replace(`<html><head></head><body>`, '')
+            .replace(`</body></html>`, '')
+            .replace(/clippath/g, 'clipPath')
+            .replace(/attributename/g, 'attributeName')
+            .replace(/animatetransform/g, 'animateTransform')
+            .replace(/repeatcount/g, 'repeatCount')
+            .replace(/calcmode/g, 'calcMode')
+            .replace(/svg_/ig, '')
     }
 
 }
