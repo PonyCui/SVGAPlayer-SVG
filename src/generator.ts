@@ -50,6 +50,7 @@ export class Generator {
     }
 
     appendLayers() {
+        const duration = (this.videoItem.frames / this.videoItem.FPS).toFixed(0) + "s"
         this.videoItem.sprites.forEach((it, idx) => {
             const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
             let animateLayers: { [key: string]: string[] } = {
@@ -79,10 +80,10 @@ export class Generator {
                     animateLayers[attrName] = [animateLayers[attrName][0]]
                 }
                 if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
-                    animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                    animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
                 }
                 else {
-                    animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
+                    animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="indefinite" calcMode="discrete"></animate>`
                 }
             }
             if (it.imageKey != undefined && this.videoItem.images[it.imageKey] != undefined && this.svgElement !== undefined) {
@@ -173,7 +174,7 @@ export class Generator {
                         if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
                             animateLayers[attrName] = [animateLayers[attrName][0]]
                         }
-                        animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
+                        animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="indefinite" calcMode="discrete"></animate>`
                     }
                     if (shapeItem.type == "shape") {
                         contentElement += `<path id="sprite_${idx}_${shapeIndex}" d="${shapeItem.pathArgs.d}">${animateContents2}</path>`
