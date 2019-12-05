@@ -17,10 +17,8 @@ export class Generator {
 
     async process() {
         await this.appendImages()
-        // this.appendClipPaths()
+        this.appendClipPaths()
         this.appendLayers()
-        // this.appendCSS()
-        this.appendSMIL()
     }
 
     async appendImages() {
@@ -55,43 +53,41 @@ export class Generator {
         this.videoItem.sprites.forEach((it, idx) => {
             const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
             if (it.imageKey != undefined && this.videoItem.images[it.imageKey] != undefined && this.svgElement !== undefined) {
+                let animateLayers: { [key: string]: string[] } = {
+                    "opacity": [],
+                    "translate": [],
+                    "rotate": [],
+                    "skew": [],
+                    "scale": [],
+                }
                 if (this.spriteHasClipPath[idx] === true) {
-                    it.frames.forEach((_, frameIndex) => {
-                        const imgElement = JSDOM.fragment(`<use id="sprite_${idx}_${frameIndex}" href="#image_${it.imageKey}" style="opacity:0.0; will-change: transform, opacity; clip-path: url(#maskPath_${idx}_${frameIndex});" />`)
-                        svgElement.appendChild(imgElement)
-                    })
+                    animateLayers["clip-path"] = []
                 }
-                else {
-                    const animateLayers: { [key: string]: string[] } = {
-                        "opacity": [],
-                        "translate": [],
-                        "rotate": [],
-                        "skew": [],
-                        "scale": [],
+                it.frames.forEach((frameItem, frameIndex) => {
+                    const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
+                    animateLayers["opacity"].push(Number(frameItem.alpha.toFixed(3)).toString())
+                    animateLayers["translate"].push(`${Number(unmatrix.translateX.toFixed(6)).toString()},${Number(unmatrix.translateY.toFixed(6)).toString()}`)
+                    animateLayers["rotate"].push(`${Number(unmatrix.rotate.toFixed(6)).toString()}`)
+                    animateLayers["skew"].push(`${Number(unmatrix.skew.toFixed(6)).toString()}`)
+                    animateLayers["scale"].push(`${Number(unmatrix.scaleX.toFixed(6)).toString()},${Number(unmatrix.scaleY.toFixed(6)).toString()}`)
+                    if (this.spriteHasClipPath[idx] === true) {
+                        animateLayers["clip-path"].push(`url(#maskPath_${idx}_${frameIndex})`)
                     }
-                    it.frames.forEach((frameItem, frameIndex) => {
-                        const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                        animateLayers["opacity"].push(Number(frameItem.alpha.toFixed(3)).toString())
-                        animateLayers["translate"].push(`${Number(unmatrix.translateX.toFixed(6)).toString()},${Number(unmatrix.translateY.toFixed(6)).toString()}`)
-                        animateLayers["rotate"].push(`${Number(unmatrix.rotate.toFixed(6)).toString()}`)
-                        animateLayers["skew"].push(`${Number(unmatrix.skew.toFixed(6)).toString()}`)
-                        animateLayers["scale"].push(`${Number(unmatrix.scaleX.toFixed(6)).toString()},${Number(unmatrix.scaleY.toFixed(6)).toString()}`)
-                    })
-                    let animateContents = ""
-                    for (const attrName in animateLayers) {
-                        if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
-                            continue
-                        }
-                        if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
-                            animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
-                        }
-                        else {
-                            animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
-                        }
+                })
+                let animateContents = ""
+                for (const attrName in animateLayers) {
+                    if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
+                        animateLayers[attrName] = [animateLayers[attrName][0]]
                     }
-                    const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" style="opacity:${Number(it.frames[0].alpha.toFixed(3)).toString()};">${animateContents}</use>`)
-                    svgElement.appendChild(imgElement)
+                    if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
+                        animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                    }
+                    else {
+                        animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="4s" repeatCount="indefinite" calcMode="discrete"></animate>`
+                    }
                 }
+                const imgElement = JSDOM.fragment(`<use id="sprite_${idx}" href="#image_${it.imageKey}" opacity="0" >${animateContents}</use>`)
+                svgElement.appendChild(imgElement)
             }
             // else if (it.imageKey !== undefined && it.imageKey.endsWith(".vector")) {
             //     let standard = JSON.stringify(it.frames[0].shapes)
@@ -284,14 +280,6 @@ export class Generator {
         const cssElement = JSDOM.fragment(`<style>${cssContent}</style>`)
         const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
         svgElement.appendChild(cssElement)
-    }
-
-    appendSMIL() {
-        // let smilContent = '';
-
-        // const cssElement = JSDOM.fragment(`<style>${smilContent}</style>`)
-        // const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
-        // svgElement.appendChild(cssElement)
     }
 
     toString() {
