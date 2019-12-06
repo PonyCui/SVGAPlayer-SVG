@@ -76,6 +76,7 @@ export class Generator {
             })
             let animateContents = ""
             for (const attrName in animateLayers) {
+                if (animateLayers[attrName].length == 0) continue;
                 if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
                     animateLayers[attrName] = [animateLayers[attrName][0]]
                 }
@@ -96,7 +97,10 @@ export class Generator {
                 let shapeIndexMapItem: any = {}
                 it.frames.forEach((frameItem, frameIndex) => {
                     frameItem.shapes.forEach((shapeItem, shapeIndex) => {
-                        if (shapes[shapeIndex] === undefined) { shapes[shapeIndex] = []; shapeIndexMapItem[shapeIndex] = shapeItem }
+                        if (shapes[shapeIndex] === undefined) {
+                            shapes[shapeIndex] = [];
+                            shapeIndexMapItem[shapeIndex] = shapeItem;
+                        }
                         shapes[shapeIndex][frameIndex] = shapeItem;
                     })
                 })
@@ -106,9 +110,6 @@ export class Generator {
                     let animateLayers: { [key: string]: string[] } = {
                         "stroke": [],
                         "stroke-width": [],
-                        "line-cap": [],
-                        "line-join": [],
-                        "miter-limit": [],
                         "fill": [],
                         "d": [],
                         "cx": [],
@@ -119,71 +120,145 @@ export class Generator {
                         "y": [],
                         "width": [],
                         "height": [],
+                        "translate": [],
+                        "rotate": [],
+                        "skew": [],
+                        "scale": [],
+                        "stroke-dasharray": [],
                     }
-                    shapeFrames.forEach((shapeFrame: any) => {
-                        if (shapeFrame.styles.stroke) {
+                    for (let index = 0; index < this.videoItem.frames; index++) {
+                        let shapeFrame = shapeFrames[index];
+                        if (shapeFrame === undefined || shapeFrame === null) {
+                            shapeFrame = { styles: {}, shape: {} }
+                        }
+                        if (shapeFrame.styles.stroke !== undefined && shapeFrame.styles.stroke !== null) {
                             animateLayers["stroke"].push(`rgba(${(shapeFrame.styles.stroke[0] * 255).toFixed(0)}, ${(shapeFrame.styles.stroke[1] * 255).toFixed(0)}, ${(shapeFrame.styles.stroke[2] * 255).toFixed(0)}, ${shapeFrame.styles.stroke[3]})`)
+                        }
+                        else {
+                            animateLayers["stroke"].push(`transparent`)
                         }
                         if (shapeFrame.styles.strokeWidth !== undefined && shapeFrame.styles.strokeWidth !== null) {
                             animateLayers["stroke-width"].push(shapeFrame.styles.strokeWidth.toString())
                         }
-                        if (shapeFrame.styles.lineCap !== undefined && shapeFrame.styles.lineCap !== null) {
-                            animateLayers["line-cap"].push(shapeFrame.styles.lineCap)
-                        }
-                        if (shapeFrame.styles.lineJoin !== undefined && shapeFrame.styles.lineJoin !== null) {
-                            animateLayers["line-join"].push(shapeFrame.styles.lineJoin)
-                        }
-                        if (shapeFrame.styles.miterLimit !== undefined && shapeFrame.styles.miterLimit !== null) {
-                            animateLayers["miter-limit"].push(shapeFrame.styles.miterLimit)
+                        else {
+                            animateLayers["stroke-width"].push(`0`)
                         }
                         if (shapeFrame.styles.fill !== undefined && shapeFrame.styles.fill !== null) {
                             animateLayers["fill"].push(`rgba(${(shapeFrame.styles.fill[0] * 255).toFixed(0)}, ${(shapeFrame.styles.fill[1] * 255).toFixed(0)}, ${(shapeFrame.styles.fill[2] * 255).toFixed(0)}, ${shapeFrame.styles.fill[3]})`)
                         }
-                        if (shapeFrame.shape !== undefined && shapeFrame.shape !== null) {
-                            if (shapeFrame.shape.d !== undefined && shapeFrame.shape.d !== null) {
-                                animateLayers["d"].push(shapeFrame.shape.d)
-                            }
-                            if (shapeFrame.shape.cx !== undefined && shapeFrame.shape.cx !== null) {
-                                animateLayers["cx"].push(shapeFrame.shape.cx)
-                            }
-                            if (shapeFrame.shape.cy !== undefined && shapeFrame.shape.cy !== null) {
-                                animateLayers["cy"].push(shapeFrame.shape.cy)
-                            }
-                            if (shapeFrame.shape.rx !== undefined && shapeFrame.shape.rx !== null) {
-                                animateLayers["rx"].push(shapeFrame.shape.rx)
-                            }
-                            if (shapeFrame.shape.ry !== undefined && shapeFrame.shape.ry !== null) {
-                                animateLayers["ry"].push(shapeFrame.shape.ry)
-                            }
-                            if (shapeFrame.shape.x !== undefined && shapeFrame.shape.x !== null) {
-                                animateLayers["x"].push(shapeFrame.shape.x)
-                            }
-                            if (shapeFrame.shape.y !== undefined && shapeFrame.shape.y !== null) {
-                                animateLayers["y"].push(shapeFrame.shape.y)
-                            }
-                            if (shapeFrame.shape.width !== undefined && shapeFrame.shape.width !== null) {
-                                animateLayers["width"].push(shapeFrame.shape.width)
-                            }
-                            if (shapeFrame.shape.height !== undefined && shapeFrame.shape.height !== null) {
-                                animateLayers["height"].push(shapeFrame.shape.height)
-                            }
+                        else {
+                            animateLayers["fill"].push(`transparent`)
                         }
-                    })
+                        if (shapeFrame.styles.lineDash !== undefined && shapeFrame.styles.lineDash !== null) {
+                            animateLayers["stroke-dasharray"].push(shapeFrame.styles.lineDash.join(" "))
+                        }
+                        else {
+                            animateLayers["stroke-dasharray"].push(``)
+                        }
+                        if (shapeFrame.shape === undefined || shapeFrame.shape === null) {
+                            shapeFrame.shape = {}
+                        }
+                        if (shapeFrame.shape.d !== undefined && shapeFrame.shape.d !== null && shapeFrame.shape.d.trim().length > 0) {
+                            animateLayers["d"].push(shapeFrame.shape.d)
+                        }
+                        else {
+                            animateLayers["d"].push(`M 0 0`)
+                        }
+                        if (shapeFrame.shape.cx !== undefined && shapeFrame.shape.cx !== null) {
+                            animateLayers["cx"].push(shapeFrame.shape.cx)
+                        }
+                        else {
+                            animateLayers["cx"].push(``)
+                        }
+                        if (shapeFrame.shape.cy !== undefined && shapeFrame.shape.cy !== null) {
+                            animateLayers["cy"].push(shapeFrame.shape.cy)
+                        }
+                        else {
+                            animateLayers["cy"].push(``)
+                        }
+                        if (shapeFrame.shape.rx !== undefined && shapeFrame.shape.rx !== null) {
+                            animateLayers["rx"].push(shapeFrame.shape.rx)
+                        }
+                        else {
+                            animateLayers["rx"].push(``)
+                        }
+                        if (shapeFrame.shape.ry !== undefined && shapeFrame.shape.ry !== null) {
+                            animateLayers["ry"].push(shapeFrame.shape.ry)
+                        }
+                        else {
+                            animateLayers["ry"].push(``)
+                        }
+                        if (shapeFrame.shape.x !== undefined && shapeFrame.shape.x !== null) {
+                            animateLayers["x"].push(shapeFrame.shape.x)
+                        }
+                        else {
+                            animateLayers["x"].push(``)
+                        }
+                        if (shapeFrame.shape.y !== undefined && shapeFrame.shape.y !== null) {
+                            animateLayers["y"].push(shapeFrame.shape.y)
+                        }
+                        else {
+                            animateLayers["y"].push(``)
+                        }
+                        if (shapeFrame.shape.width !== undefined && shapeFrame.shape.width !== null) {
+                            animateLayers["width"].push(shapeFrame.shape.width)
+                        }
+                        else {
+                            animateLayers["width"].push(``)
+                        }
+                        if (shapeFrame.shape.height !== undefined && shapeFrame.shape.height !== null) {
+                            animateLayers["height"].push(shapeFrame.shape.height)
+                        }
+                        else {
+                            animateLayers["height"].push(``)
+                        }
+                        if (shapeFrame.transform !== undefined && shapeFrame.transform !== null) {
+                            const unmatrix = parseMatrix([shapeFrame.transform.a, shapeFrame.transform.b, shapeFrame.transform.c, shapeFrame.transform.d, shapeFrame.transform.tx, shapeFrame.transform.ty]);
+                            animateLayers["translate"].push(`${Number(unmatrix.translateX.toFixed(6)).toString()},${Number(unmatrix.translateY.toFixed(6)).toString()}`)
+                            animateLayers["rotate"].push(`${Number(unmatrix.rotate.toFixed(6)).toString()}`)
+                            animateLayers["skew"].push(`${Number(unmatrix.skew.toFixed(6)).toString()}`)
+                            animateLayers["scale"].push(`${Number(unmatrix.scaleX.toFixed(6)).toString()},${Number(unmatrix.scaleY.toFixed(6)).toString()}`)
+                        }
+                        else {
+                            animateLayers["translate"].push(`0,0`)
+                            animateLayers["rotate"].push(`0`)
+                            animateLayers["skew"].push(`0`)
+                            animateLayers["scale"].push(`1,1`)
+                        }
+                    }
                     let animateContents2 = ""
                     for (const attrName in animateLayers) {
-                        if (animateLayers[attrName].every(it => it === animateLayers[attrName][0])) {
-                            animateLayers[attrName] = [animateLayers[attrName][0]]
+                        if (animateLayers[attrName].length == 0) continue;
+                        const standardValues = animateLayers[attrName].filter((it) => {
+                            if (attrName === "stroke" || attrName === "fill") {
+                                return true
+                            }
+                            else if (attrName === "stroke-width") {
+                                return it !== "0"
+                            }
+                            else {
+                                return it !== ""
+                            }
+                        })
+                        if (standardValues.every(it => it === standardValues[0])) {
+                            animateLayers[attrName] = [standardValues[0]]
                         }
-                        animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="indefinite" calcMode="discrete"></animate>`
+                        if (animateLayers[attrName].join(";") === "") continue;
+                        if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
+                            animateContents2 += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                        }
+                        else {
+                            animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="indefinite" calcMode="discrete"></animate>`
+                        }
                     }
                     if (shapeItem.type == "shape") {
-                        contentElement += `<path id="sprite_${idx}_${shapeIndex}" d="${shapeItem.pathArgs.d}">${animateContents2}</path>`
+                        contentElement += `<path id="sprite_${idx}_${shapeIndex}" d="${shapeItem.pathArgs.d}" stroke-linejoin="${shapeItem.styles.lineJoin}" stroke-linecap="${shapeItem.styles.lineCap}" stroke-miterlimit="${shapeItem.styles.miterLimit}">${animateContents2}</path>`
                     }
                     else if (shapeItem.type == "ellipse") {
-                        contentElement += `<ellipse id="sprite_${idx}_${shapeIndex}" cx="${shapeItem.pathArgs.x}" cy="${shapeItem.pathArgs.y}" rx="${shapeItem.pathArgs.radiusX}" ry="${shapeItem.pathArgs.radiusY}">${animateContents2}</ellipse>`
+                        contentElement += `<ellipse id="sprite_${idx}_${shapeIndex}" cx="${shapeItem.pathArgs.x}" cy="${shapeItem.pathArgs.y}" rx="${shapeItem.pathArgs.radiusX}" ry="${shapeItem.pathArgs.radiusY}" stroke-linejoin="${shapeItem.styles.lineJoin}" stroke-linecap="${shapeItem.styles.lineCap}" stroke-miterlimit="${shapeItem.styles.miterLimit}">${animateContents2}</ellipse>`
                     }
                     else if (shapeItem.type == "rect") {
-                        contentElement += `<rect id="sprite_${idx}_${shapeIndex}" x="${shapeItem.pathArgs.x}" y="${shapeItem.pathArgs.y}" width="${shapeItem.pathArgs.width}" height="${shapeItem.pathArgs.height}" rx="${shapeItem.pathArgs.cornerRadius}" ry="${shapeItem.pathArgs.cornerRadius}">${animateContents2}</rect>`
+                        contentElement += `<rect id="sprite_${idx}_${shapeIndex}" x="${shapeItem.pathArgs.x}" y="${shapeItem.pathArgs.y}" width="${shapeItem.pathArgs.width}" height="${shapeItem.pathArgs.height}" rx="${shapeItem.pathArgs.cornerRadius}" ry="${shapeItem.pathArgs.cornerRadius}" stroke-linejoin="${shapeItem.styles.lineJoin}" stroke-linecap="${shapeItem.styles.lineCap}" stroke-miterlimit="${shapeItem.styles.miterLimit}">${animateContents2}</rect>`
                     }
                 }
                 const gElement = JSDOM.fragment(`<g id="sprite_${idx}">${contentElement}${animateContents}</g>`)
