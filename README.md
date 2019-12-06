@@ -4,7 +4,7 @@ Now you can export SVGA file as standalone SVG file. You can use the SVG file in
 
 The SVG file used SMIL technology to display animation.
 
-Go to https://svga.io/ transform your SVGA file.
+Go to https://svga.io/ enter 『SVG 转换器』 transform your SVGA file.
 
 ## Previews
 
@@ -12,9 +12,13 @@ These animations were export by this project. Let's have a look.
 
 | Name     |      SVG      |  Gziped Size |
 |:----------:|:-------------:|:------:|
-| angel    | ![angel](samples/angel.svg) | 200K |
-| PinJump |    ![PinJump](samples/PinJump.svg)   |   7K |
-| rose | ![rose](samples/rose.svg) |    265K |
-| TwitterHeart | ![TwitterHeart](samples/TwitterHeart.svg) |    8K |
+| angel    | ![angel](https://cdn.jsdelivr.net/gh/ponycui/SVGAPlayer-SVG@master/samples/angel.svg) | 200K |
+| PinJump |    ![PinJump](https://cdn.jsdelivr.net/gh/ponycui/SVGAPlayer-SVG@master/samples/PinJump.svg)   |   7K |
+| rose | ![rose](https://cdn.jsdelivr.net/gh/ponycui/SVGAPlayer-SVG@master/samples/rose.svg) |    265K |
+| TwitterHeart | ![TwitterHeart](https://cdn.jsdelivr.net/gh/ponycui/SVGAPlayer-SVG@master/samples/TwitterHeart.svg) |    8K |
 
 Pretty small.
+
+## Performance TIPS
+
+The SMIL animation cause high CPU usage, so the SVGAPlayer-Web is a better choice if you can control the JavaScript and DOM.
