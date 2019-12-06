@@ -1,7 +1,13 @@
 import { VideoEntity } from "./proto/video_entity";
 import { JSDOM } from "jsdom";
-import * as jimp from "jimp";
-import { FrameEntity } from "./proto/frame_entity";
+declare var window: any;
+let jimp = typeof window !== "undefined" ? window.Jimp : require("jimp")
+
+export interface Settings {
+    backgroundColor?: string
+    loopCount?: number
+    fillMode?: string
+}
 
 export class Generator {
 
@@ -10,9 +16,28 @@ export class Generator {
     spriteHasClipPath: boolean[] = []
     spritePathSame: boolean[] = []
 
-    constructor(readonly videoItem: VideoEntity, readonly loops: number = 0) {
-        this.svgElement = JSDOM.fragment(`<svg version="1.1" xmlns="http://www.w3.org/2000/svg" style="background-color: black" viewBox="0 0 ${videoItem.videoSize.width} ${videoItem.videoSize.height}"></svg>`)
+    constructor(readonly videoItem: VideoEntity, readonly settings: Settings = {}) {
+        this.svgElement = JSDOM.fragment(`<svg version="1.1" xmlns="http://www.w3.org/2000/svg" style="background-color: ${typeof this.settings.backgroundColor === "string" ? this.settings.backgroundColor : "transparent"}" viewBox="0 0 ${videoItem.videoSize.width} ${videoItem.videoSize.height}"></svg>`)
         this.dom.window.document.body.appendChild(this.svgElement)
+    }
+
+    repeatCount(): string {
+        if (this.settings.loopCount === undefined || this.settings.loopCount === 0) {
+            return "indefinite"
+        }
+        return this.settings.loopCount.toString()
+    }
+
+    fillMode(): string {
+        if (this.repeatCount() !== "indefinite") {
+            if (this.settings.fillMode === "forward") {
+                return " fill=\"freeze\""
+            }
+            if (this.settings.fillMode === "clear") {
+                return " fill=\"remove\""
+            }
+        }
+        return ""
     }
 
     async process() {
@@ -81,10 +106,10 @@ export class Generator {
                     animateLayers[attrName] = [animateLayers[attrName][0]]
                 }
                 if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
-                    animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                    animateContents += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" additive="sum" repeatCount="${this.repeatCount()}" ${this.fillMode()} calcMode="discrete"></animateTransform>`
                 }
                 else {
-                    animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="indefinite" calcMode="discrete"></animate>`
+                    animateContents += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="${this.repeatCount()}" ${this.fillMode()} calcMode="discrete"></animate>`
                 }
             }
             if (it.imageKey != undefined && this.videoItem.images[it.imageKey] != undefined && this.svgElement !== undefined) {
@@ -245,10 +270,10 @@ export class Generator {
                         }
                         if (animateLayers[attrName].join(";") === "") continue;
                         if (attrName == "translate" || attrName == "rotate" || attrName == "skew" || attrName == "scale") {
-                            animateContents2 += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" additive="sum" repeatCount="indefinite" calcMode="discrete"></animateTransform>`
+                            animateContents2 += `<animateTransform attributeName="transform" type="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" additive="sum" repeatCount="${this.repeatCount()}" ${this.fillMode()} calcMode="discrete"></animateTransform>`
                         }
                         else {
-                            animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="indefinite" calcMode="discrete"></animate>`
+                            animateContents2 += `<animate attributeName="${attrName}" values="${animateLayers[attrName].join(";")}" dur="${duration}" repeatCount="${this.repeatCount()}" ${this.fillMode()} calcMode="discrete"></animate>`
                         }
                     }
                     if (shapeItem.type == "shape") {
@@ -265,136 +290,6 @@ export class Generator {
                 svgElement.appendChild(gElement)
             }
         })
-    }
-
-    appendCSS() {
-        let cssContent = '';
-        this.videoItem.sprites.forEach((spriteItem, spriteIndex) => {
-            if (this.spriteHasClipPath[spriteIndex] === true) {
-                spriteItem.frames.forEach((frameItem, frameIndex) => {
-                    let animationContent = `#sprite_${spriteIndex}_${frameIndex} { animation: sprite_${spriteIndex}_${frameIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
-                    let keyframesContent = ``;
-                    for (let currentIndex = 0; currentIndex < this.videoItem.frames; currentIndex++) {
-                        if (currentIndex < frameIndex) {
-                            if (currentIndex == 0) {
-                                keyframesContent += `0% { opacity: 0; }`
-                            }
-                            else if (currentIndex == frameIndex - 1) {
-                                keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
-                            }
-                            continue
-                        }
-                        if (frameItem.alpha <= 0.0 || currentIndex > frameIndex) {
-                            keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
-                            break
-                        }
-                        const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                        keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
-                    }
-                    animationContent += `@keyframes sprite_${spriteIndex}_${frameIndex}_animation { ${keyframesContent} }`
-                    cssContent += animationContent;
-                })
-            }
-            else if (spriteItem.imageKey !== undefined && spriteItem.imageKey.endsWith(".vector")) {
-                if (this.spritePathSame[spriteIndex] === true) {
-                    let animationContent = `#sprite_${spriteIndex}_0 { animation: sprite_${spriteIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
-                    let shapeContents: string[] = [];
-                    let keyframesContent = ``;
-                    let shapeKeyframeContents: string[] = [];
-                    spriteItem.frames.forEach((frameItem, frameIndex) => {
-                        if (frameItem.alpha <= 0.0) {
-                            keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
-                            return;
-                        }
-                        const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                        keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
-                        frameItem.shapes.forEach((shapeItem, shapeIndex) => {
-                            if (shapeContents[shapeIndex] === undefined) {
-                                shapeContents[shapeIndex] = `#sprite_${spriteIndex}_0_${shapeIndex} { animation: sprite_${spriteIndex}_0_${shapeIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`
-                                shapeKeyframeContents[shapeIndex] = ``
-                            }
-                            if (shapeItem.styles !== undefined) {
-                                let styleAttrs = ``;
-                                if (shapeItem.styles.stroke) {
-                                    styleAttrs += `stroke: rgba(${(shapeItem.styles.stroke[0] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[1] * 255).toFixed(0)}, ${(shapeItem.styles.stroke[2] * 255).toFixed(0)}, ${shapeItem.styles.stroke[3]});`
-                                }
-                                if (shapeItem.strokeWidth !== undefined) {
-                                    styleAttrs += `stroke-width:${shapeItem.strokeWidth};`
-                                }
-                                if (shapeItem.lineCap !== undefined) {
-                                    styleAttrs += `line-cap:${shapeItem.lineCap};`
-                                }
-                                if (shapeItem.lineJoin !== undefined) {
-                                    styleAttrs += `line-join:${shapeItem.lineJoin};`
-                                }
-                                if (shapeItem.miterLimit !== undefined) {
-                                    styleAttrs += `miter-limit:${shapeItem.miterLimit};`
-                                }
-                                if (shapeItem.styles.fill) {
-                                    styleAttrs += `fill: rgba(${(shapeItem.styles.fill[0] * 255).toFixed(0)}, ${(shapeItem.styles.fill[1] * 255).toFixed(0)}, ${(shapeItem.styles.fill[2] * 255).toFixed(0)}, ${shapeItem.styles.fill[3]});`
-                                }
-                                for (let currentIndex = 0; currentIndex < this.videoItem.frames; currentIndex++) {
-                                    if (shapeItem.transform !== undefined && shapeItem.transform !== null) {
-                                        const unmatrix = parseMatrix([shapeItem.transform.a, shapeItem.transform.b, shapeItem.transform.c, shapeItem.transform.d, shapeItem.transform.tx, shapeItem.transform.ty]);
-                                        shapeKeyframeContents[shapeIndex] += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); ${styleAttrs} }`
-                                    }
-                                    else {
-                                        shapeKeyframeContents[shapeIndex] += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { ${styleAttrs} }`
-                                    }
-                                }
-                            }
-                        })
-                    })
-                    animationContent += `@keyframes sprite_${spriteIndex}_animation { ${keyframesContent} }`
-                    cssContent += animationContent;
-                    shapeContents.forEach((it, idx) => {
-                        cssContent += `${it} @keyframes sprite_${spriteIndex}_0_${idx}_animation { ${shapeKeyframeContents[idx]} }`;
-                    })
-                }
-                else {
-                    spriteItem.frames.forEach((frameItem, frameIndex) => {
-                        let animationContent = `#sprite_${spriteIndex}_${frameIndex} { animation: sprite_${spriteIndex}_${frameIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
-                        let keyframesContent = ``;
-                        for (let currentIndex = 0; currentIndex < this.videoItem.frames; currentIndex++) {
-                            if (currentIndex < frameIndex) {
-                                if (currentIndex == 0) {
-                                    keyframesContent += `0% { opacity: 0; }`
-                                }
-                                else if (currentIndex == frameIndex - 1) {
-                                    keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
-                                }
-                                continue
-                            }
-                            if (frameItem.alpha <= 0.0 || currentIndex > frameIndex) {
-                                keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
-                                break
-                            }
-                            const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                            keyframesContent += `${((currentIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
-                        }
-                        animationContent += `@keyframes sprite_${spriteIndex}_${frameIndex}_animation { ${keyframesContent} }`
-                        cssContent += animationContent;
-                    })
-                }
-            }
-            else {
-                let animationContent = `#sprite_${spriteIndex} { animation: sprite_${spriteIndex}_animation ${(this.videoItem.frames / this.videoItem.FPS).toFixed(2)}s ${this.loops > 0 ? this.loops.toFixed(0) : 'infinite'} step-start forwards}`;
-                let keyframesContent = ``;
-                spriteItem.frames.forEach((frameItem, frameIndex) => {
-                    if (frameItem.alpha <= 0.0) {
-                        keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: 0; }`
-                        return;
-                    }
-                    const unmatrix = parseMatrix([frameItem.transform.a, frameItem.transform.b, frameItem.transform.c, frameItem.transform.d, frameItem.transform.tx, frameItem.transform.ty]);
-                    keyframesContent += `${((frameIndex / this.videoItem.frames) * 100).toFixed(0)}% { opacity: ${Number(frameItem.alpha.toFixed(3)).toString()}; transform: translate(${Number(unmatrix.translateX.toFixed(6)).toString()}px, ${Number(unmatrix.translateY.toFixed(6)).toString()}px) rotate(${Number(unmatrix.rotate.toFixed(6)).toString()}deg) skew(${Number(unmatrix.skew.toFixed(6)).toString()}deg) scale(${Number(unmatrix.scaleX.toFixed(6)).toString()}, ${Number(unmatrix.scaleY.toFixed(6)).toString()}); }`
-                })
-                animationContent += `@keyframes sprite_${spriteIndex}_animation { ${keyframesContent} }`
-                cssContent += animationContent;
-            }
-        })
-        const cssElement = JSDOM.fragment(`<style>${cssContent}</style>`)
-        const svgElement = this.dom.window.document.getElementsByTagName("svg")[0]
-        svgElement.appendChild(cssElement)
     }
 
     toString() {

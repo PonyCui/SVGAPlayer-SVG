@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "fs": "tsc && node dist/fs.js",
+    "build": "tsc && browserify dist/main.js -x jimp --s tiktok > browser/main.browser.js"
   },
   "author": "",
   "license": "ISC",
