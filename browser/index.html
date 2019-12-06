@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="zh-cmn-Hans">
+<link rel="stylesheet" href="https://svga.io/assets/v1/main-2018.css?h=7286240e0b0e12dea64b">
+<style>
+    .preview-main.ext-bg {
+        background-image: url("https://svga.io/assets/v1/frame.png");
+    }
+
+    .preview-main.ext-bg.is-active {
+        background-image: url("https://svga.io/assets/v1/frame-active.png");
+    }
+
+    .popbox-close {
+        background-image: url("https://svga.io/assets/v1/img-close.png");
+    }
+</style>
+<link rel="stylesheet" href="https://svga.io/assets/swiper-3.4.2.min.css?h=7286240e0b0e12dea64b">
+<link rel="stylesheet"
+    href="https://svga.io//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css?h=7286240e0b0e12dea64b">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="renderer" content="webkit">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>SVGA</title>
+    <meta name="description" content="SVGA 是一种同时兼容 iOS / Android / Web 多个平台的动画格式。">
+    <meta name="keywords" content="SVGA, 高性能动画, 跨平台动画方案, 矢量动画, 直播礼物动画">
+    <meta name="publicPath" content="">
+    <style>
+        canvas,
+        header input {
+            display: none;
+        }
+    </style>
+    <link rel="stylesheet" href="https://svga.io/assets/font/amplesoft-bold.css?h=7286240e0b0e12dea64b">
+    <link rel="stylesheet" href="https://svga.io/css/main.css?h=7286240e0b0e12dea64b">
+</head>
+
+<style>
+    header {
+        z-index: 99;
+    }
+
+    .swiper-slide {
+        background-color: #fff;
+    }
+
+    .preview-controls {
+        width: 800px;
+        overflow: visible;
+    }
+
+    .preview-controls__upload a,
+    .preview-controls__download a {
+        width: auto;
+        min-width: 130px;
+        padding: 0 5px;
+    }
+
+    .matter-info {
+        overflow: scroll;
+    }
+</style>
+
+<body ontouchstart="">
+    <style>
+        header nav .tab .list {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-30px);
+        }
+    </style>
+    <header>
+        <div class="center">
+            <h2><a href="https://svga.io/index.html">SVGA</a></h2>
+            <input type="checkbox" name="checkbox" id="checkbox">
+            <div class="icon">
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+                <i></i>
+            </div>
+            <nav>
+                <div class="tab">
+                    <div class="item">
+                        <div class="label">
+                            <a href="https://svga.io/intro.html"><em data-i18n="header-nav-0">介绍</em></a>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="label">
+                            <a href="https://svga.io/integrated.html"><em data-i18n="header-nav-1">集成指南</em></a>
+                        </div>
+                    </div>
+                    <div class="item">
+                        <div class="list">
+                            <div class="item">
+                                <div class="label">
+                                    <a target="_blank"
+                                        href="https://github.com/yyued?utf8=%E2%9C%93&q=SVGA&type=&language="><em
+                                            data-i18n="header-nav-3">开源代码</em></a>
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="label">
+                                    <a href="https://svga.io/designer.html"><em data-i18n="header-nav-5">设计师工具</em></a>
+                                </div>
+                            </div>
+                            <div class="item pc-show mb-hide">
+                                <div class="label">
+                                    <a href="https://svga.io/svga-preview.html"><em
+                                            data-i18n="header-nav-6">在线播放器</em></a>
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="label">
+                                    <a href="https://svga.io/article.html"><em data-i18n="header-nav-7">资源文章</em></a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="label"><em data-i18n="header-nav-2">社区生态</em></div>
+                    </div>
+                    <div class="item">
+                        <div class="list">
+                            <div class="item">
+                                <div class="label">
+                                    <a href="https://svga.io/en/index.html" data-lang="en"><em>English</em></a>
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="label">
+                                    <a href="https://svga.io/index.html" data-lang="zh"><em>中文</em></a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="label"><em>Language</em></div>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+
+    <article id="preview">
+        <div class="center">
+            <!-- @extends prev version -->
+            <div class="swiper-container">
+                <div class="swiper-wrapper">
+                    <div class="swiper-slide">
+                        <div class="preview">
+                            <div id="preview-main" class="preview-main ext-bg" ondrop="dropHandler(event);"
+                                ondragover="dragOverHandler(event);">
+                                <p id="preview-text-0" data-i18n="preview-text-0">将 SVGA 转换成 SVG 文件，请将文件拖拽到此区域。</p>
+                                <div id="previewDemo" style="background-color: black; width: 0px"></div>
+                            </div>
+                            <div id="colorPicker" class="color-picker-button-group" style="display:none">
+                                <a id="color-picker-button-1" href="javascript:;" data-role="change-color"></a>
+                                <a id="color-picker-button-2" href="javascript:;" data-role="change-color"></a>
+                                <a id="color-picker-button-3" href="javascript:;" data-role="change-color"></a>
+                                <a id="color-picker-button-4" href="javascript:;" data-role="change-color"></a>
+                                <a id="color-picker-button-5" href="javascript:;" data-role="change-color"></a>
+                                <a id="color-picker-button-6" href="javascript:;" data-role="change-color"></a>
+                            </div>
+                            <div id="preview-controls" class="preview-controls" style="display: none">
+                                <div class="preview-controls__btn preview-controls__upload">
+                                    <a href="javascript:;" data-role="upload-file" data-i18n="preview-text-1"
+                                        style="width: 160px" onclick="downloadSVG()">下载 SVG 文件</a>
+                                </div>
+                                <div class="preview-controls__btn preview-controls__download">
+                                    <a href="javascript:;" data-role="upload-file" data-i18n="preview-text-3"
+                                        style="width: 120px" onclick="changeBackgroundColor()"
+                                        id="settingBackgroundColor">透明</a>
+                                </div>
+                                <div class="preview-controls__btn preview-controls__download">
+                                    <a href="javascript:;" data-role="upload-file" data-i18n="preview-text-3"
+                                        style="width: 120px" onclick="changeLoopCount()" id="settingLoopCount">无限循环</a>
+                                </div>
+                                <div class="preview-controls__btn preview-controls__download">
+                                    <a href="javascript:;" data-role="upload-file" data-i18n="preview-text-3"
+                                        style="width: 120px" onclick="changeFillMode()" id="settingFillMode">终于末帧</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="swiper-slide">
+                        <div class="matter">
+                            <div class="matter-left">
+                                <div class="matter-preview" id="previewImage"></div>
+                                <div class="matter-info">
+                                    <div id="JSONDataDisplayer"></div>
+                                </div>
+                            </div>
+                            <div class="matter-right">
+                                <ul>
+                                    <li id="imageKeyListFirst">&nbsp;</li>
+                                    <li id="imageKeyListEnd">&nbsp;</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- 如果需要导航按钮 -->
+                <div id="swiperButtonPrev" class="swiper-button-prev" style="display:none"></div>
+            </div>
+        </div>
+    </article>
+    <footer>
+        <div class="center">
+            <p>© 2019 svga.io</p>
+        </div>
+    </footer>
+
+    <script>
+        var _hmt = _hmt || [];
+        (function () {
+            var hm = document.createElement("script");
+            hm.src = "https://hm.baidu.com/hm.js?4585ebf3a1bece6347c14bdfb9ba0b16";
+            var s = document.getElementsByTagName("script")[0];
+            s.parentNode.insertBefore(hm, s);
+        })();
+    </script>
+
+    <script src="//assets.yystatic.com/common/lib/jquery/2.2.3/jquery-2.2.3.min.js?h=7286240e0b0e12dea64b"></script>
+
+    <script src="jimp.min.js"></script>
+    <script src="main.browser.js"></script>
+
+    <script>
+
+        let currentFile;
+        let currentOut;
+        let transformSetting = {
+            backgroundColor: "transparent",
+            loopCount: 0,
+            fillMode: "forward",
+        }
+
+        function dropHandler(ev) {
+            ev.preventDefault();
+            if (ev.dataTransfer.items) {
+                for (var i = 0; i < ev.dataTransfer.items.length; i++) {
+                    if (ev.dataTransfer.items[i].kind === 'file') {
+                        currentFile = ev.dataTransfer.items[i].getAsFile();
+                        break;
+                    }
+                }
+            } else {
+                for (var i = 0; i < ev.dataTransfer.files.length; i++) {
+                    currentFile = ev.dataTransfer.files[i];
+                    break;
+                }
+            }
+            if (currentFile !== undefined) {
+                tiktok.transformFile(currentFile, transformSetting).then((out) => {
+                    currentOut = out;
+                    startTransform()
+                })
+            }
+        }
+
+        function startTransform() {
+            tiktok.transformFile(currentFile, transformSetting).then((out) => {
+                currentOut = out;
+                displayOut()
+            })
+        }
+
+        function displayOut() {
+            $('#preview-main').height("unset")
+            $('#preview-text-0').hide()
+            $('#previewDemo').html(currentOut).width("100%")
+            $('#preview-controls').show()
+        }
+
+        function dragOverHandler(ev) {
+            ev.preventDefault();
+        }
+
+        function downloadSVG() {
+            var saveData = (function () {
+                var a = document.createElement("a");
+                document.body.appendChild(a);
+                a.style = "display: none";
+                return function (fileName) {
+                    var blob = new Blob([currentOut], { type: "octet/stream" }),
+                        url = window.URL.createObjectURL(blob);
+                    a.href = url;
+                    a.download = fileName;
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                };
+            }());
+            saveData(new Date().getTime() + ".svg");
+        }
+
+        function changeBackgroundColor() {
+            let newValue = prompt("请输入背景色", transformSetting.backgroundColor)
+            if (newValue) {
+                transformSetting.backgroundColor = newValue;
+                $('#settingBackgroundColor').text(newValue)
+                startTransform()
+            }
+        }
+
+        function changeLoopCount() {
+            let newValue = prompt("请输入动画循环次数（ 0 代表无限循环）", transformSetting.loopCount)
+            if (newValue) {
+                transformSetting.loopCount = newValue;
+                $('#settingLoopCount').text(newValue === 0 ? "无限循环" : "循环" + newValue.toString() + "次")
+                startTransform()
+            }
+        }
+
+        function changeFillMode() {
+            let newValue = prompt("请输入动画结束时的停留画面；终于首帧 = backward；终于末帧 = forward；清空 = clear", transformSetting.fillMode)
+            if (newValue) {
+                if (newValue !== "backward" && newValue !== "forward；清空" && newValue !== "clear") {
+                    alert("非法值")
+                    return;
+                }
+                transformSetting.fillMode = newValue;
+                if (newValue === "backward") {
+                    $('#settingFillMode').text("终于首帧")
+                }
+                else if (newValue === "forward") {
+                    $('#settingFillMode').text("终于末帧")
+                }
+                else if (newValue === "clear") {
+                    $('#settingFillMode').text("清空")
+                }
+                startTransform()
+            }
+        }
+
+    </script>
+
+
+</body>
+
+</html>

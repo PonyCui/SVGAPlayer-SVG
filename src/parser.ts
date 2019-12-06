@@ -12,4 +12,26 @@ export class Parser {
         return new VideoEntity(movieData)
     }
 
+    static async loadFile(file: File): Promise<VideoEntity> {
+        return new Promise((res, rej) => {
+            const reader = new FileReader
+            reader.onloadend = () => {
+                if (reader.result) {
+                    const buffer = reader.result
+                    const inflatedData = pako.inflate(buffer)
+                    const movieData = ProtoMovieEntity.decode(inflatedData)
+                    res(new VideoEntity(movieData))
+                }
+                else {
+                    rej("Load failed.")
+                }
+            }
+            reader.onerror = () => {
+                rej("Load failed.")
+            }
+            reader.readAsArrayBuffer(file)
+        })
+
+    }
+
 }

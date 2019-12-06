@@ -1,10 +1,9 @@
 import { Parser } from "./parser";
-import { Generator } from "./generator";
-import { writeFileSync } from "fs";
+import { Generator, Settings } from "./generator";
 
-(async () => {
-    const a = await Parser.load("/Users/saiakirahui/Documents/OpenSource/SVGAPlayer-SVG/samples/posche.svga")
-    const b = new Generator(a)
-    await b.process()
-    writeFileSync("/Users/saiakirahui/Documents/OpenSource/SVGAPlayer-SVG/samples/posche.svg", b.toString());
-})();
+export const transformFile = async (file: File, settings: Settings): Promise<string> => {
+    const source = await Parser.loadFile(file)
+    const generator = new Generator(source, settings)
+    await generator.process()
+    return generator.toString()
+}
