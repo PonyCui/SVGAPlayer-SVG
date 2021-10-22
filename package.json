@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "fs": "tsc && node dist/fs.js",
-    "build": "tsc && browserify dist/main.js -x jimp --s tiktok > browser/main.browser.js"
+    "build": "tsc && browserify dist/main.browser.js -x jimp --s tiktok > browser/main.browser.js && uglifyjs browser/main.browser.js > browser/main.browser.min.js"
   },
   "author": "",
   "license": "ISC",
@@ -17,6 +17,8 @@
   },
   "devDependencies": {
     "@types/jsdom": "^12.2.3",
-    "typescript": "^3.5.1"
+    "browserify": "^17.0.0",
+    "typescript": "^3.5.1",
+    "uglify-js": "^3.14.2"
   }
 }

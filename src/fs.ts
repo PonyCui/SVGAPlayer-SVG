@@ -13,6 +13,6 @@ export const transformFile = async (fsPath: string): Promise<string> => {
     return generator.toString()
 }
 
-transformFile("samples/angel.svga").then((result) => {
-    fs.writeFileSync("samples/angel.svg", result)
+transformFile("samples/rose.svga").then((result) => {
+    fs.writeFileSync("samples/rose.svg", result)
 })
